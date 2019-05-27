@@ -31,19 +31,24 @@
 (defun cljx-upgrade ()
   "Upgrades the contents of the current buffer to use reader conditionals."
   (interactive)
-  (save-excursion
-    (goto-char (point-min))
-    (let ((rgx "#\\+cljs\\b"))
-      (while (re-search-forward rgx nil t)
-        (replace-match "#?(:cljs")
-        (forward-sexp)
-        (insert ")")))
-    (goto-char (point-min))
-    (let ((rgx "#\\+clj\\b"))
-      (while (re-search-forward rgx nil t)
-        (replace-match "#?(:clj")
-        (forward-sexp)
-        (insert ")")))))
+  (cl-flet ((upgrade (platform)
+              (goto-char (point-min))
+              (let ((rgx (concat "#\\+" platform "\\b")))
+                (while (re-search-forward rgx nil t)
+                  (let ((type-hint? (looking-at-p " +\\^")))
+                    (if type-hint?
+                      (progn
+                        (replace-match (concat "#?@(:" platform " ("))
+                        (forward-sexp)
+                        (forward-sexp)
+                        (insert "))"))
+                      (progn
+                        (replace-match (concat "#?(:" platform))
+                        (forward-sexp)
+                        (insert ")"))))))))
+    (save-excursion
+      (upgrade "clj")
+      (upgrade "cljs"))))
 
 (provide 'cljx)
 ;;; cljx.el ends here
